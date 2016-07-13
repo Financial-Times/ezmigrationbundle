@@ -2,6 +2,12 @@
 
 namespace Kaliop\eZMigrationBundle\Core\API\Managers;
 
+use eZ\Publish\API\Repository\RoleService;
+use eZ\Publish\API\Repository\UserService;
+use eZ\Publish\API\Repository\Values\Content\Query\Criterion\ContentTypeIdentifier;
+use eZ\Publish\API\Repository\Values\Content\Query\Criterion\Field;
+use eZ\Publish\API\Repository\Values\Content\Query\Criterion\LogicalAnd;
+use eZ\Publish\API\Repository\Values\Content\Query\Criterion\Operator;
 use Kaliop\eZMigrationBundle\Core\API\ReferenceHandler;
 use eZ\Publish\API\Repository\Values\User\UserGroup;
 
@@ -45,15 +51,7 @@ class UserGroupManager extends AbstractManager
 
         if (array_key_exists('roles', $this->dsl)) {
             $roleService = $this->repository->getRoleService();
-            foreach ($this->dsl['roles'] as $roleId) {
-                if (is_int($roleId)) {
-                    $role = $roleService->loadRole($roleId);
-                } else {
-                    // Assume it is an identifier if it is not an int
-                    $role = $roleService->loadRoleByIdentifier($roleId);
-                }
-                $roleService->assignRoleToUserGroup($role, $userGroup);
-            }
+            $this->setUserGroupRoles($roleService, $userGroup);
         }
 
         /*
@@ -69,16 +67,16 @@ class UserGroupManager extends AbstractManager
      */
     public function update()
     {
-        if (!array_key_exists('id', $this->dsl)) {
-            throw new \InvalidArgumentException('No user group has been specified for update. Please add the id of the user group to the migration definition.');
-        }
-
         $this->loginUser();
 
         $userService = $this->repository->getUserService();
         $contentService = $this->repository->getContentService();
 
-        $userGroup = $userService->loadUserGroup($this->dsl['id']);
+        $userGroup = $this->loadUserGroup($userService);
+        
+        if (null === $userGroup) {
+            throw new \InvalidArgumentException('No user group has been specified for update. Please add the id or the name of the user group to the migration definition.');
+        }
 
         /** @var $updateStruct \eZ\Publish\API\Repository\Values\User\UserGroupUpdateStruct */
         $updateStruct = $userService->newUserGroupUpdateStruct();
@@ -108,6 +106,12 @@ class UserGroupManager extends AbstractManager
 
             // Move group to new parent
             $userService->moveUserGroup($userGroup, $newParentGroup);
+        }
+
+        if (array_key_exists('roles', $this->dsl)) {
+            $roleService = $this->repository->getRoleService();
+            $this->removeUserGroupRoles($roleService, $userGroup);
+            $this->setUserGroupRoles($roleService, $userGroup);
         }
 
         $this->setReferences($userGroup);
@@ -169,5 +173,61 @@ class UserGroupManager extends AbstractManager
         }
 
         return true;
+    }
+
+    /**
+     * @param UserService $userService
+     * @return null|UserGroup
+     */
+    private function loadUserGroup(UserService $userService)
+    {
+        $userGroup = null;
+
+        if (array_key_exists('id', $this->dsl)) {
+            $userGroup = $userService->loadUserGroup($this->dsl['id']);
+
+        } elseif (array_key_exists('name', $this->dsl)) {
+            $userGroupContent = $this->repository->getSearchService()->findSingle(
+                new LogicalAnd(
+                    [
+                        new ContentTypeIdentifier('user_group'),
+                        new Field('name', Operator::EQ, $this->dsl['name']),
+                    ]
+                )
+            );
+
+            $userGroup = $userService->loadUserGroup($userGroupContent->id);
+        }
+
+        return $userGroup;
+    }
+
+    /**
+     * @param RoleService $roleService
+     * @param UserGroup $userGroup
+     */
+    private function removeUserGroupRoles(RoleService $roleService, UserGroup $userGroup)
+    {
+        $roleAssignments = $roleService->getRoleAssignmentsForUserGroup($userGroup);
+        foreach ($roleAssignments as $roleAssignment) {
+            $roleService->removeRoleAssignment($roleAssignment);
+        }
+    }
+
+    /**
+     * @param RoleService $roleService
+     * @param UserGroup $userGroup
+     */
+    private function setUserGroupRoles(RoleService $roleService, UserGroup $userGroup)
+    {
+        foreach ($this->dsl['roles'] as $roleId) {
+            if (is_int($roleId)) {
+                $role = $roleService->loadRole($roleId);
+            } else {
+                // Assume it is an identifier if it is not an int
+                $role = $roleService->loadRoleByIdentifier($roleId);
+            }
+            $roleService->assignRoleToUserGroup($role, $userGroup);
+        }
     }
 }
