@@ -82,9 +82,7 @@ class UserGroupManager extends AbstractManager
         
         if (array_key_exists('id', $this->dsl)) {
             $userGroup = $userService->loadUserGroup($this->dsl['id']);
-        }
-
-        if (array_key_exists('name', $this->dsl)) {
+        } elseif (array_key_exists('name', $this->dsl)) {
             $userGroupContent = $this->repository->getSearchService()->findSingle(
                 new LogicalAnd(
                     [
