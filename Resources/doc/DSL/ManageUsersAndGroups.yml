@@ -1,79 +1,85 @@
 -
-    mode: create
-    type: user_group
-    parent_group_id: x # The object ID of the user group to put the new group into, can be an array
-    name: xyz
-    description: xyz # Optional
-    roles: [x, y, z] # The role names or ids to assign to the group
-    # The list in references tells the manager to store specific attribute values for later use
-    # by other migration definitions in the current set.
-    references: #Optional
-         -
-            identifier: referenceID # A string used to identify the reference
-            attribute: attribute # An attribute to get the value of for the reference
-                                 # The shorthand 'id' can be used instead of 'object_id'
-
--
-    mode: create
     type: user
+    mode: create
     first_name: xyz
     last_name: xyz
     username: xyz
     email: xyz
     password: xyz
-    main_language: xyz # Optional, default to eng-GB
-    groups: [x, y, z] # The user group IDs (Object IDs) to put the user into
-    # The list in references tells the manager to store specific attribute values for later use
-    # by other migration definitions in the current set.
-    references: #Optional
+    lang: xxx-YY # Optional, will fallback to default language if not provided (--default-language option or 'eng-GB' by default)
+    groups: [x, y, z] # The user group ID or IDs (Content IDs) to put the user into
+    # The list in references tells the manager to store specific values for later use
+    # by other steps in the current migration.
+    references: # Optional
          -
-            identifier: referenceID # A string used to identify the reference
+            identifier: referenceId # A string used to identify the reference
             attribute: attribute # An attribute to get the value of for the reference (currently supports user_id)
                                  # The shorthand 'id' can be used instead of 'user_id'
 
 -
-    mode: update
     type: user
-    id: x # The ID of the user to update.
-    email: xyz # Optional
+    mode: update
+    match: # Only one of the following can be specified, to define which users to update
+        - id: x # int|int[]
+        - email: xyz # string|string[]
+        - login: # string|string[]
+    email: xyz # Optional. NB: can only be set if the match definition latches a single user
     password: xyz # Optional
     enabled: true|false # Optional
-    # Optional, list of group IDs the user is a member of.
+    # Optional, Group ID / list of group IDs the user has to be a member of.
     # The user will be removed from all groups that are not in the list
     groups: [x, y, z]
-    # The list in references tells the manager to store specific attribute values for later use
-    # by other migration definitions in the current set.
-    references: #Optional
+    # The list in references tells the manager to store specific values for later use
+    # by other steps in the current migration.
+    references: # Optional
          -
-            identifier: referenceID # A string used to identify the reference
-            attribute: attribute # An attribute to get the value of for the reference (currently supports user_id_
+            identifier: referenceId # A string used to identify the reference
+            attribute: attribute # An attribute to get the value of for the reference (currently supports user_id)
                                  # The shorthand 'id' can be used instead of 'user_id'
 
 -
-    mode: update
+    type: user
+    mode: delete
+    match: # Only one of the following can be specified, to define which users to delete
+        - id: x # int|int[]
+        - email: xyz # string|string[]
+        - login: # string|string[]
+
+-
     type: user_group
-    id: x # The ID of the user group to update.
-    name: xyz # Optional
+    mode: create
+    parent_group_id: x # The content ID of the user group to put the new group into, can be an array
+    name: xyz
+    description: xyz # Optional
+    roles: [x, y, z] # The role names or ids to assign to the group
+    # The list in references tells the manager to store specific values for later use
+    # by other steps in the current migration.
+    references: # Optional
+         -
+            identifier: referenceId # A string used to identify the reference
+            attribute: attribute # An attribute to get the value of for the reference (currently supports user_group_id)
+                                 # The shorthand 'id' can be used instead of 'user_group_id'
+
+-
+    type: user_group
+    mode: update
+    match: # Define which groups to update
+        - id: x # int|int[]
+    name: xyz # Optional. Can only be used when the group to be updted is single
     description: xyz # Optional
     parent_group_id: x # Optional, the new parent user group ID
-    # The list in references tells the manager to store specific attribute values for later use
-    # by other migration definitions in the current set.
-    references: #Optional
+    lang: xxx-YY # Optional, will fallback to default language if not provided (--default-language option or 'eng-GB' by default)
+    # The list in references tells the manager to store specific values for later use
+    # by other steps in the current migration.
+    references: # Optional
          -
-            identifier: referenceID # A string used to identify the reference
+            identifier: referenceId # A string used to identify the reference
             attribute: attribute # An attribute to get the value of for the reference
-                                 # The shorthand 'id' can be used instead of 'object_id'
+                                 # The shorthand 'id' can be used instead of 'content_id'
 
 -
-    mode: delete
-    type: user
-    user_id: x # Optional
-    email: xyz # Optional
-    username: xyz # Optional
-    # user_id, email, username could also be list of items as well
-
--
-    # The users which are not assigned to other groups will be deleted.
-    mode: delete
+    # Note: The users which are not assigned to other groups will be deleted.
     type: user_group
-    group: x # Id of the group to be deleted. Can also be a list of ids.
+    mode: delete
+    match: # Only one of the following can be specified, to define which groups to delete
+        - id: x # int|int[]

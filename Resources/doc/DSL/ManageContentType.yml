@@ -1,16 +1,17 @@
 -
-    mode: create
     type: content_type
-    content_type_group: x # Id of the group we want to put the new content class into
-    name: xyz # Name of new class
+    mode: create
+    content_type_group: x # Id or identifier of the group we want to put the new content class into
     identifier: xyz # Class identifier
+    name: xyz # Name of new class
+    name_pattern: pattern # Pattern to use for the name of the contents (ex: <title>)
     description: xyz # Optional
-    name_pattern: pattern # Optional, pattern to use for the name of the object (ex: <title>)
     url_name_pattern: pattern # Optional
     is_container: true|false # Optional, defaults to false
+    lang: xxx-YY # Optional, will fallback to default language if not provided (--default-language option or 'eng-GB' by default)
     attributes:
         -
-            type: xyz # Attribute type (See list https://confluence.ez.no/display/EZP/FieldTypes)
+            type: xyz # Attribute type (See list https://doc.ez.no/display/EZP/FieldTypes+reference)
             name: xyz
             identifier: xyz
             description: # Optional
@@ -21,25 +22,29 @@
             category: default|meta # Optional
             default-value: # Optional
             field-settings: array # Optional, can be used for various field type specific settings
-    # The list in references tells the manager to store specific attribute values for later use
-    # by other migration definitions in the current set.
-    references: #Optional
+    # The list in references tells the manager to store specific values for later use by other steps in the current
+    # migration.
+    references: # Optional
         -
-            identifier: referenceID # A string used to identify the reference
-            attribute: attributeId # An attribute to get the value of for the reference (supports content type id and content type identifier)
-                                   # The shorthand 'id' can be used instead of 'content_type_id
-                                   # The shorthand 'identifier' can be used instead of 'content_type_identifier
+            identifier: referenceId # A string used to identify the reference
+            attribute: attributeId # An attribute to get the value of for the reference. Supports content_type_id and content_type_identifier
+                                   # The shorthand 'id' can be used instead of 'content_type_id'
+                                   # The shorthand 'identifier' can be used instead of 'content_type_identifier'
 
 -
-    mode: update
     type: content_type
-    identifier: xyz # The identifier of the content type
+    mode: update
+    match: # Only one of the following can be specified, to define which content type(s) to update
+        identifier: xyz # string|string[] The identifier of the content type
+        id: x # int|int[]
+        remote_id: abc # string|string[]
     new_identifier: xyz # Optional, will update the identifier if set
     name: xyz # Optional, will be updated if set
     description: xyz # Optional, will be updated if set
     name_pattern: xyz # Optional, will be updated if set
     url_name_pattern: xyz # Optional, will be updated if set
     is_container: true|false # Optional, will be updated if set
+    lang: xxx-YY # Optional, will fallback to default language if not provided (--default-language option or 'eng-GB' by default)
     attributes: # Optional, if set will update existing ones or add new ones.
         -
             identifier: xyz # Identifier of the attribute to update or identifier of the new attribute to add
@@ -58,66 +63,74 @@
     # Remove all attributes that have their identifiers listed here
     # Can use both ways to define the list of identifiers.
     remove_attributes: [identifier1, identifier2, identifier3]
-    # The list in references tells the manager to store specific attribute values for later use
-    # by other migration definitions in the current set.
-    references: #Optional
+    # The list in references tells the manager to store specific values for later use
+    # by other steps in the current migration.
+    references: # Optional
             -
-                identifier: referenceID # A string used to identify the reference
+                identifier: referenceId # A string used to identify the reference
                 attribute: attributeId # An attribute to get the value of for the reference (supports content type id and content type identifier)
-                                       # The shorthand 'id' can be used instead of 'content_type_id
-                                       # The shorthand 'identifier' can be used instead of 'content_type_identifier
+                                       # The shorthand 'id' can be used instead of 'content_type_id'
+                                       # The shorthand 'identifier' can be used instead of 'content_type_identifier'
 
 -
     # Delete a content type
-    mode: delete
     type: content_type
-    identifier: xyz # The identifier of the content type
+    mode: delete
+    match: # Only one of the following can be specified, to define which content type(s) to delete
+        identifier: xyz # string|string[] The identifier of the content type
+        id: x # int|int[]
+        remote_id: abc # string|string[]
 
 # Attribute examples.
 
 # Please also note that you can use references in the field-settings area.
 
-# Object Relation List
 -
-  identifier: class_identifier
-  type: ezobjectrelationlist
-  name: Name
-  description: Description of stuff
-  required: false
-  searchable: true
-  info-collector: false
-  disable-translation: false
-  category: meta
-  field-settings:
-    selectionDefaultLocation: reference:some_reference_location_id # OR a location ID
-    selectionContentTypes: [content_type_identifier] #This MUST be an array
-    selectionMethod: 0 # 0 is browse - 1 is dropdown
-  position: 60
+    type: content_type
+    mode: update
+    attributes: # Optional, if set will update existing ones or add new ones.
+
+# Object Relation List
+        -
+            identifier: class_identifier
+            type: ezobjectrelationlist
+            name: Name
+            description: Description of stuff
+            required: false
+            searchable: true
+            info-collector: false
+            disable-translation: false
+            category: meta
+            field-settings:
+                selectionDefaultLocation: reference:some_reference_location_id # OR a location ID
+                selectionContentTypes: [content_type_identifier] # This MUST be an array
+                selectionMethod: 0 # 0 is browse - 1 is dropdown
+            position: 60
 
 # Object Relation
--
-  identifier: image
-  type: ezobjectrelation
-  name: Image
-  description: The image to use for the article
-  required: false
-  searchable: true
-  info-collector: false
-  disable-translation: false
-  category: default
-  field-settings:
-    selectionRoot: reference:some_reference_location_id # OR a location ID
-  position: 50
+        -
+            identifier: image
+            type: ezobjectrelation
+            name: Image
+            description: The image to use for the article
+            required: false
+            searchable: true
+            info-collector: false
+            disable-translation: false
+            category: default
+            field-settings:
+                selectionRoot: reference:some_reference_location_id # OR a location ID
+            position: 50
 
 # Nova SEO Metas
--
-  type: novaseometas
-  name: SEO Meta
-  identifier: seo_meta
-  description: The meta data settings for SEO
-  required: false
-  info-collector: false
-  searchable: false # CANNOT be searchable
-  disable-translation: false
-  category: meta
-  position: 130
+        -
+            type: novaseometas
+            name: SEO Meta
+            identifier: seo_meta
+            description: The meta data settings for SEO
+            required: false
+            info-collector: false
+            searchable: false # CANNOT be searchable
+            disable-translation: false
+            category: meta
+            position: 130

@@ -1,11 +1,19 @@
 -
-    mode: create
     type: content
-    content_type: [content type identifier]
-    main_location: x # The location (node) id of the parent node
+    mode: create
+    content_type: xxx # Content type identifier
+    main_location: x # The id of the parent location. When a non numeric string is used, it is assumed to be a location remote id
     priority: 0 # Set the priority of the main location
-    other_locations: [x, y, z] # Optional, node ids of other parent location
-    remote_id: custom_remote_id # Optional, will set an object remote id as the remote ID and a location remote ID with a _location suffix
+    is_hidden: true|false # Optional
+    sort_field: x # Optional. See ManageLocation.yml for details
+    sort_order: ASC|DESC # Optional
+    location_remote_id: xxx # Optional, remote id of the new location which will be created
+    other_locations: [x, y, z] # Optional, ids of extra parent locations. When a non numeric string is used as element, it is assumed to be a location remote id
+    remote_id: custom_remote_id # Optional, will set a custom remote id
+    lang: xxx-YY # Optional, will fallback to default language if not provided (--default-language option or 'eng-GB' by default)
+    section: x # string|int Optional section id or identifier
+    owner: xxx # user id, login or email if unique; Optional, set the content owner
+    modification_date: zzz # Optional, set content modification date (for formats, see: http://php.net/manual/en/datetime.formats.php)
     attributes:
         - attribute1: value1
         - attribute2: value2
@@ -16,58 +24,74 @@
         - attribute4: >
                       value on multiple
                       lines, but new line is not preserved on parsing
-        # image/binary file attribute example
+        # ezimage/ezbinaryfile file attribute example
         - attribute5:
-            type: ezimage/ezbinaryfile
-            path: '/path/to/image' # Relative path from MigrationVersions/images/
-            alt_text: xyz #optional, only used for images
-        # xml text using references
+            path: '/path/to/image' # Relative path from MigrationsVersions/images/ or MigrationsVersions/files/
+            alt_text: xyz # Optional, only used for images
+        # ezxmltext, using references
         - attribute6:
-            type: ezxmltext
             content: '<section><paragraph><embed view="embed" size="medium" object_id="[reference:example_reference]" /></paragraph></section>'
-
-    # The list in references tells the manager to store specific attribute values for later use
-    # by other migration definitions in the current set.
-    references: #Optional
+        # Adding values to an ezauthor field
+        - attribute7:
+              - 
+                name: Test Author 
+                email: test@example.com 
+              -
+                name: Another Author 
+                email: another@example.com
+        # Adding values to an ezobjectrelation field
+        - attribute8: x # content id or string: reference:xxx
+        # Adding values to an ezobjectrelationlist field
+        - ezobjectrelationlist: [ x, reference:xxx ] # array of content ids or reference strings
+    # Optionally assign object states to the content
+    object_states:
+        - xxx # int|string an object state id or identifier
+        - yyy
+    # The list in references tells the manager to store specific values for later use
+    # by other steps in the current migration.
+    references: # Optional
         -
-            identifier: referenceID # A string used to identify the reference
-            attribute: attributeId # An attribute to get the value of for the reference (supports object_id and location_id)
+            identifier: referenceId # A string used to identify the reference
+            attribute: attributeId # An attribute to get the value of for the reference (supports: content_id, content_remote_id, location_id, path)
 
 -
-    mode: update
     type: content
-    object_id: x # The id of the object to update.
-    remote_id: xxx # The 'remote_id' of the object to update. Can be used as alternative to the object_id. NB: this does *not* mean 'set the remote-id to what I want'
+    mode: update
+    match: # Specify ONLY ONE of the following, to match a content or a set of contents to update
+        content_id: x # int|int[]
+        content_remote_id: xxx # string|string[]
+        location_id: x # int|int[]
+        location_remote_id: xxx # string|string[]
+        parent_location_id: x # int|int[]
+        parent_location_remote_id: xxx # string|string[]
+        content_type: yyy # string|string[] a content type identifier
+    lang: xxx-YY # Optional, will fallback to default language if not provided (--default-language option or 'eng-GB' by default)
+    section: x # string|int Optional section id or identifier
+    owner: xxx # user id, login or email if unique; Optional, set the content owner
+    modification_date: zzz # Optional, set content modification date (for formats, see: http://php.net/manual/en/datetime.formats.php)
+    publication_date: zzz # Optional, set content modification date (for formats, see: http://php.net/manual/en/datetime.formats.php)
+    new_remote_id: xxx # string Optional set a new RemoteId
     attributes: # the list of attribute identifier value pairs
         - attribute1: value1
         - attribute2: value2
-    # The list in references tells the manager to store specific attribute values for later use
-    # by other migration definitions in the current set.
-    references: #Optional
+    # Optionally assign object states to the content
+    object_states:
+        - xxx # int|string an object state id or didentifier
+    # The list in references tells the manager to store specific values for later use
+    # by other steps in the current migration.
+    references: # Optional
         -
-            identifier: referenceID # A string used to identify the reference
-            attribute: attributeId # An attribute to get the value of for the reference (supports object_id and location_id)
+            identifier: referenceId # A string used to identify the reference
+            attribute: attributeId # An attribute to get the value of for the reference (supports content_id, content_remote_id, location_id, path)
 
 -
-    mode: delete
     type: content
-    object_id: x # the content/object id or a list of ids
-    remote_id: x # the content/object id or a list of ids. Used when object_id is not set
-
--
     mode: delete
-    type: content
-    remote_id: x # the remote id of the object
-
--
-    mode: delete
-    type: content
-    object_id: [id1, id2, id3] # Defining a sequence with []
-
--
-    mode: delete
-    type: content
-    # Sequences with the standard list syntax
-    object_id: - id1
-               - id2
-               - id3
+    match: # Specify ONLY ONE of the following, to match a content or a set of contents to remove
+        content_id: x # int|int[]
+        content_remote_id: xxx # string|string[]
+        location_id: x # int|int[]
+        location_remote_id: xxx # string|string[]
+        parent_location_id: x # int|int[]
+        parent_location_remote_id: xxx # string|string[]
+        content_type: yyy # string|string[] a content type identifier

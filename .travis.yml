@@ -1,0 +1,116 @@
+# A Travis configuration file for a bundle which aims to be compatible with both eZPublish 5 and eZPlatform
+
+language: php
+
+# use the docker-based Travis images for a tiny speed boost
+sudo: false
+
+# NB: see https://support.ez.no/Public/Service-Life for EOL dates of eZPublish versions
+#     and http://php.net/supported-versions.php for EOL dates of PHP versions
+#     but don't foget that php 5.3 is still supported by RedHat: https://access.redhat.com/support/policy/updates/errata.
+# We limit the matrix to one version of eZPublish for each version of PHP
+matrix:
+  include:
+    # ezpublish-community 2014.3 corresponds to enterprise 5.3, still supported, installs via composer
+    - php: 5.4
+      env: EZ_PACKAGES='ezsystems/ezpublish-community:~2014.3.2 netgen/tagsbundle:~1.2' EZ_VERSION=ezpublish-community EZ_APP_DIR=ezpublish EZ_KERNEL=EzPublishKernel CODE_COVERAGE=0
+    #- php: 5.5
+    #  env: EZ_PACKAGES='ezsystems/ezpublish-community:~2014.3.2 netgen/tagsbundle:~1.2' EZ_VERSION=ezpublish-community EZ_APP_DIR=ezpublish EZ_KERNEL=EzPublishKernel CODE_COVERAGE=0
+    # the last version of eZPublish Community Project, aka eZPublish 5, corresponds to eZPublish Platform (Enterprise) 5.4
+    #- php: 5.4
+    #  env: EZ_PACKAGES='ezsystems/ezpublish-community:~2014.11.0 ezsystems/behatbundle:~5.4 netgen/tagsbundle:~2.0' EZ_VERSION=ezpublish-community EZ_APP_DIR=ezpublish EZ_KERNEL=EzPublishKernel CODE_COVERAGE=0
+    - php: 5.5
+      env: EZ_PACKAGES='ezsystems/ezpublish-community:~2014.11.0 ezsystems/behatbundle:~5.4 netgen/tagsbundle:~2.0' EZ_VERSION=ezpublish-community EZ_APP_DIR=ezpublish EZ_KERNEL=EzPublishKernel CODE_COVERAGE=0
+    - php: 5.6
+      env: EZ_PACKAGES='ezsystems/ezpublish-community:~2014.11.0 ezsystems/behatbundle:~5.4 netgen/tagsbundle:~2.0' EZ_VERSION=ezpublish-community EZ_APP_DIR=ezpublish EZ_KERNEL=EzPublishKernel CODE_COVERAGE=1
+    # latest version currently available of eZPlatform aka eZPublish 6
+    #- php: 5.6
+    #  env: EZ_PACKAGES='ezsystems/ezplatform:~1.5.0 ezsystems/behatbundle:^6.3 netgen/tagsbundle:~2.0' EZ_VERSION=ezplatform EZ_APP_DIR=app EZ_KERNEL=AppKernel CODE_COVERAGE=0
+    - php: 7.0
+      env: EZ_PACKAGES='ezsystems/ezplatform:~1.5.0 ezsystems/behatbundle:^6.3 netgen/tagsbundle:~2.0' EZ_VERSION=ezplatform EZ_APP_DIR=app EZ_KERNEL=AppKernel CODE_COVERAGE=0
+
+  allow_failures:
+    # this currently fails because of eZPublish services.yml not quoting usage of @, despite it being tested with Sf 2.8...
+    - php: 7.0
+
+before_install:
+  # No need for a web server, until we start testing using Selenium
+  #- sudo apt-get update -qq
+  #- sudo apt-get install -qq -y --force-yes apache2 libapache2-mod-fastcgi
+
+install:
+  # Latest version of composer breaks downloading eZ, so we can not run self-update. See https://github.com/composer/composer/issues/4582
+  #- composer self-update
+
+  # Increase php memory limit (need to do this now or we risk composer failing)
+  - phpenv config-add Tests/travis/zzz_php.ini
+
+  # Q: are all of these scripts ok here, or shall they be moved to the before_script step, when we add matrix combinations ???
+
+  # Disable xdebug for speed (executing composer), but allow us to e-enable it later
+  # NB: 'php -i' does not work on hhvm
+  - if [ "$TRAVIS_PHP_VERSION" = "hhvm" ]; then export XDEBUG_INI=''; fi
+  - if [ "$TRAVIS_PHP_VERSION" != "hhvm" ]; then export XDEBUG_INI=`php -i | grep xdebug.ini | grep home/travis | grep -v '=>' | head -1`; fi
+  - export XDEBUG_INI=${XDEBUG_INI/,/}
+  - if [ "$XDEBUG_INI" != "" ]; then mv "$XDEBUG_INI" "$XDEBUG_INI.bak"; fi
+
+  # We do not rely on the requirements set in composer.json, but install a different eZ version depending on the test matrix
+  # For the moment, to install eZPlatform, a set of DEV packages have to be allowed; really ugly sed expression to alter composer.json follows
+  # TODO is this still needed?
+  - 'if [ "$EZ_VERSION" = "ezplatform" ]; then sed -i ''s/"license": "GPL-2.0",/"license": "GPL-2.0", "minimum-stability": "dev", "prefer-stable": true,/'' composer.json; fi'
+
+  - composer require --prefer-source --dev ${EZ_PACKAGES}
+  # Q: is this needed at all ???
+  #- composer update
+
+  # Re-enable xdebug for when we need to generate code coverage
+  - if [ "$CODE_COVERAGE" = "1" -a "$XDEBUG_INI" != "" ]; then mv "$XDEBUG_INI.bak" "$XDEBUG_INI"; fi
+
+  # Create the database from sql files present in either the legacy stack or kernel
+  - ./Tests/travis/create-db.sh ${EZ_VERSION} behattestdb root
+
+before_script:
+  # Set up configuration files:
+  # eZ5 config files
+  - cp vendor/ezsystems/${EZ_VERSION}/${EZ_APP_DIR}/config/parameters.yml.dist vendor/ezsystems/${EZ_VERSION}/${EZ_APP_DIR}/config/parameters.yml
+  - cat Tests/ezpublish/config/config_behat_${EZ_VERSION}.yml >> vendor/ezsystems/${EZ_VERSION}/${EZ_APP_DIR}/config/config_behat.yml
+  # Load the migration bundle in the Sf kernel
+  - sed -i 's/$bundles = array(/$bundles = array(new Kaliop\\eZMigrationBundle\\EzMigrationBundle(),/' vendor/ezsystems/${EZ_VERSION}/${EZ_APP_DIR}/${EZ_KERNEL}.php
+  # Fix the ez5 autoload configuration for the unexpected directory layout
+  - sed -i "s#'/../vendor/autoload.php'#'/../../../../vendor/autoload.php'#" vendor/ezsystems/${EZ_VERSION}/${EZ_APP_DIR}/autoload.php
+  # Generate legacy autoloads
+  - if [ "$EZ_VERSION" != "ezplatform" ]; then cat Tests/ezpublish-legacy/config.php > vendor/ezsystems/ezpublish-legacy/config.php; fi
+  - if [ "$EZ_VERSION" != "ezplatform" ]; then cd vendor/ezsystems/ezpublish-legacy && php bin/php/ezpgenerateautoloads.php && cd ../../..; fi
+  # Fix the phpunit configuration if needed
+  - if [ "$EZ_VERSION" = "ezplatform" ]; then sed -i 's/"vendor\/ezsystems\/ezpublish-community\/ezpublish"/"vendor\/ezsystems\/ezplatform\/app"/' phpunit.xml; fi
+
+  # TODO are these needed at all?
+  #- php vendor/ezsystems/ezpublish-community/ezpublish/console --env=behat assetic:dump
+  #- php vendor/ezsystems/ezpublish-community/ezpublish/console --env=behat cache:clear --no-debug
+
+  # TODO for eZPlatform, do we need to set up SOLR as well ?
+  #- if [ "$EZ_VERSION" = "ezplatform" ]; then ./vendor/ezsystems/ezplatform-solr-search-engine:bin/.travis/init_solr.sh; fi
+
+script:
+  # Finally! :-D
+  - if [ "$CODE_COVERAGE" = "1" ]; then phpunit --colors --coverage-clover=coverage.clover Tests/phpunit; else phpunit --colors Tests/phpunit; fi
+
+after_failure:
+  # Display as much info as we can to help developers
+  - if [ "$TRAVIS_PHP_VERSION" != "hhvm" ]; then php -i; fi
+  #- cat composer.lock
+
+after_script:
+  # Upload code-coverage to Scrutinizer
+  - if [ "$CODE_COVERAGE" = "1" -a -f coverage.clover ]; then wget https://scrutinizer-ci.com/ocular.phar; fi
+  - if [ "$CODE_COVERAGE" = "1" -a -f coverage.clover ]; then php ocular.phar code-coverage:upload --format=php-clover coverage.clover; fi
+  # Upload code-coverage to CodeClimate. NB: this works only when the CODECLIMATE_REPO_TOKEN env var has been set (we do it in the Travis config via the GUI)
+  #- if [ "$CODE_COVERAGE" = "1" -a -f coverage.clover ]; then ./vendor/bin/test-reporter --coverage-report=coverage.clover; fi
+
+# reduce depth (history) of git checkout
+git:
+    depth: 5
+
+cache:
+    directories:
+        - $COMPOSER_CACHE_DIR

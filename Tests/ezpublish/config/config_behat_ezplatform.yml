@@ -1,0 +1,59 @@
+
+# This file will be appended to the equivalent one from eZPlatform distribution
+
+parameters:
+    ezpublish.kernel.root_dir: %kernel.root_dir%/../../ezpublish-kernel
+
+doctrine:
+    dbal:
+        connections:
+            default:
+                driver: pdo_mysql
+                host: localhost
+                user: root
+                dbname: behattestdb
+                charset: UTF8
+
+ezpublish:
+    repositories:
+        behat: ~
+    siteaccess:
+        # Available siteaccesses
+        list:
+            - behat_site
+            - behat_site_admin
+        # Siteaccess groups. Use them to group common settings.
+        groups:
+            behat_group: [behat_site, behat_site_admin]
+        default_siteaccess: behat_site
+        match:
+            Map\URI:
+                behat_site_admin: behat_site_admin
+            Map\Host:
+                localhost: behat_site
+    system:
+        behat_group:
+            repository: behat
+            languages: [eng-GB]
+            var_dir: var/behat_site
+
+stash:
+    caches:
+        default:
+            drivers: [ FileSystem ]
+            inMemory: true
+            registerDoctrineAdapter: false
+
+services:
+    ez_migration_bundle.test.step_executed_listener:
+        class: Kaliop\eZMigrationBundle\Tests\helper\StepExecutedListener
+        tags:
+            - { name: kernel.event_listener, event: ez_migration.step_executed, method: onStepExecuted }
+    ez_migration_bundle.test.before_step_execution_listener:
+        class: Kaliop\eZMigrationBundle\Tests\helper\BeforeStepExecutionListener
+        tags:
+            - { name: kernel.event_listener, event: ez_migration.before_execution, method: onBeforeStepExecution }
+    ez_migration_bundle.test.custom_reference_resolver:
+        class: Kaliop\eZMigrationBundle\Tests\helper\CustomReferenceResolver
+        tags:
+            - { name: ez_migration_bundle.reference_resolver.customreference }

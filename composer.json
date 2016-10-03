@@ -1,31 +1,51 @@
 {
     "name": "kaliop/ezmigrationbundle",
-    "type": "library",
+    "type": "symfony-bundle",
     "description": "Kaliop eZ-Migration Bundle",
     "keywords": ["migrations", "database", "ezpublish"],
     "license": "GPL-2.0",
     "authors": [
         {
-            "name": "Peter Halasz",
-            "email": "peter.halasz@kaliop.co.uk",
-            "role": "Developer"
+            "name": "Gaetano Giunta",
+            "email": "ggiunta@kaliop.com",
+            "role": "Lead Developer"
         },
         {
             "name": "Daniel Clements",
             "email": "dclements@kaliop.com",
             "role": "Developer"
+        },
+        {
+            "name": "Peter Halasz",
+            "email": "peter.halasz@kaliop.co.uk",
+            "role": "Original author"
         }
     ],
     "require": {
-        "php": ">=5.3.2",
-        "ext-pdo": "*"
+        "php": ">=5.4",
+        "ezsystems/ezpublish-kernel": ">=5.3|>=2014.03",
+        "ext-pdo": "*",
+        "nikic/php-parser": "2.*",
+        "netgen/tagsbundle": "~2.0"
     },
     "require-dev": {
         "mikey179/vfsStream": "~1.2.0",
         "polishsymfonycommunity/symfony2-mocker-extension": "*",
-        "phpunit/phpunit": "~4.0"
+        "phpunit/phpunit": "~4.0",
+        "codeclimate/php-test-reporter": "dev-master",
+        "ezsystems/ezpublish-community": "~2014.3.2"
     },
     "autoload": {
         "psr-4": { "Kaliop\\eZMigrationBundle\\": "" }
-    }
+    },
+    "_comment::travis": "the following section is needed to insure that eZPublish 5 can be built on travis, using the custom directory structure where it is not in the root folder",
+    "extra": {
+        "ezpublish-legacy-dir": "vendor/ezsystems/ezpublish-legacy"
+    },
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/gggeek/BehatBundle"
+        }
+    ]
 }

@@ -1,19 +1,29 @@
-# Kaliop eZ-Migration Bundle
+Kaliop eZ-Migration Bundle
+==========================
 
-This bundle makes it easy to handle eZPlatform / eZPublish 5 content upgrades/migrations.
+This bundle makes it easy to programmatically deploy changes to eZPlatform / eZPublish 5 database structure and contents.
 
-It is inspired by the DoctrineMigrationsBundle ( http://symfony.com/doc/current/bundles/DoctrineMigrationsBundle/index.html )
+It is inspired by the [DoctrineMigrationsBundle](http://symfony.com/doc/current/bundles/DoctrineMigrationsBundle/index.html)
+
+You can think of it as the grandson of the legacy [ezxmlinstaller](https://github.com/ezsystems/ezxmlinstaller) extension.
+
+
+## Requirements
+
+* PHP 5.4 or later.
+
+* eZPublish Enterprise 5.3 or Community 2014.3 or later.
 
 
 ## Installation
 
-In either `require` or `require-dev` at the end of the bundle list add:
+In either `require` or `require-dev` at the end of the bundle list in the composer.json file add:
 
-    "kaliop/ezmigrationbundle": "~1.0"
+    "kaliop/ezmigrationbundle": "^2.0"
 
-Save composer.json and run
+Save it and run
 
-    composer update --dev kaliop/migration
+    composer update --dev kaliop/ezmigrationbundle
 
 This will install the bundle and all its dependencies.
 
@@ -25,232 +35,268 @@ The `registerBundles` method should look similar to:
     {
         $bundles = array(
             ... more stuff here ...
-            new Kaliop\eZMigrationBundle\EzMigrationBundle()
+            new \Kaliop\eZMigrationBundle\EzMigrationBundle()
         );
     }
 
 ### Checking that the bundle is installed correctly
 
-If you run `php ezpublish/console` you should see 3 new commands in the list:
+If you run `php ezpublish/console` you should see 4 new commands in the list:
 
     kaliop
       kaliop:migration:generate
       kaliop:migration:status
-      kaliop:migration:update
+      kaliop:migration:migrate
+      kaliop:migration:migration
 
 This indicates that the bundle has been installed and registered correctly.
 
+Note: the command `kaliop:migration:update` is kept around for compatibility, and will be removed in future versions.
 
-## Updating the bundle
+### Updating the bundle
 
-To get the latest version, you can update the bundle using `composer`
+To get the latest version, you can update the bundle to the latest available version by using `composer`
 
     composer update kaliop/ezmigrationbundle
 
+### Upgrading from version 1.x to version 2
 
-## Running tests
-
-The bundle has both unit tests and BDD features.
-
-To run the unit tests just point PHPUnit to the bundle directory:
-
-    bin/phpunit vendor/kaliop/ezmigrationbundle
-
-The Behat instructions are left here for future reference when we get it working correctly with eZ Publish 5.
-To run the BDD test with Behat:
-
-    bin/behat @KaliopBundleMigrationBundle
+Please read the [dedicated documentation page](doc/Upgrading/1.x_to_2.0.md)
 
 
-## Usage
+## Getting started
 
-All commands accept the standard Symfony/eZ publish 5 options, although some of them might not have any effect on the
+All commands accept the standard Symfony/eZPublish 5 options, although some of them might not have any effect on the
 command's execution.
 
-### Generating new empty migration files
+### Generating a new, empty migration definition file
 
-The bundle provides a command to easily generate a new blank migration definition file in a specific bundle.
+The bundle provides a command to easily generate a new blank migration definition file, stored in a specific bundle.
 
 For example:
 
-    php ezpublish/console kaliop:migration:generate --type=yml KaliopKBaseSimpleContentTypesBundle
+    php ezpublish/console kaliop:migration:generate --format=yml MyProjectBundle
 
-The above command will place a new yml skeleton file in the `MigrationVersions` directory of the KaliopKBaseSimpleContentTypes bundle.
+The above command will place a new yml skeleton file in the `MigrationVersion` directory of the MyProjectBundle bundle.
 
-If the directory does not exists then the command will fail with an error message.
-If the command is successful it will create a new yml file named with the following pattern: YYYYMMDDHHMMSS_place_holder.yml
+If the directory does not exists then the command will create it for you, as long as the bundle does exist and is registered.
+If the command is successful it will create a new yml file named with the following pattern: `YYYYMMDDHHMMSS_placeholder.yml`.
+You are encouraged to rename the file and change the `placeholder` part to something more meaningful, but please keep
+the timestamp part and underscore, as well as the extension
 
-(the contents of the skeleton Yaml file are stored in the GenerateCommand::$ymlTemplate and the skeleton PHP file's
-contents in GenerateCommand::$phpTemplate)
+(the contents of the skeleton Yaml file are stored as twig template)
 
 ### Listing all migrations and their status
 
-To see all the migrations in the system and whether they have been applied or not simply run the status command in your
-eZ Publish 5 root directory:
+To see all the migrations definitions available in the system and whether they have been applied or not simply run the
+status command in your eZPublish 5 root directory:
 
     php ezpublish/console kaliop:migration:status
 
-The list of migrations which have been already applied is stored in the database, in a table named `kaliop_versions`.
+The list of migrations which have been already applied is stored in the database, in a table named `kaliop_migrations`.
 The bundle will automatically create the table if needed.
+In case you need to use a different name for that table, you can change the Symfony parameter `ez_migration_bundle.table_name`.
 
 ### Applying migrations
 
-To apply all available migrations run the update command in your eZ Publish 5 root directory:
+To apply all available migrations run the migrate command in your eZPublish 5 root directory:
 
-     php ezpublish/console kaliop:migration:update
+     php ezpublish/console kaliop:migration:migrate
+
+NB: if you just executed the above command and got an error message because the migration definition file that you had
+just generated is invalid, do not worry - that is by design. Head on to the next paragraph...
+
+#### Applying a single migration file
+
+To apply a single migration run the migrate command passing it the path to its definition, as follows:
+
+    php ezpublish/console kaliop:migration:migrate --path=src/MyNamespace/MyBundle/MigrationsVersions/20160803193400_a_migration.yml
 
 ### Editing migration files
 
-So far so good, but what actions exactly can be defined in a migration file?
+So far so good, but what kind of actions can be actually done using a migration?
+
+Each migration definition consists of a series of steps, where each step defines an action. 
+
+In a Yaml migration, you can define the following types of actions:
+- creation, update and deletion of Contents
+- creation, update and deletion of Locations
+- creation, update and deletion of Users
+- creation, update and deletion of UserGroups
+- creation, update and deletion of Roles
+- creation, update and deletion of ContentTypes
+- creation and deletion of Languages
+- creation of Tags (from the Netgen Tags Bundle)
 
 The docs describing all supported parameters are in the [DSL Language description](Resources/doc/DSL/README.md)
 
-Specific topics are covered below
+### Custom migrations
 
-#### Importing binary files
+For more specific needs, you can also use 2 other types of migrations:
+- SQL migrations
+- PHP migrations
 
-To import binary files like images into attributes (ezimage, ezbinaryfile fields) the attribute needs to be defined as
-a complex type to tell the system to handle it differently.
+#### SQL migrations 
 
-Below is a snippet of how a simple/primitive field type is defined in a content creation Yaml definition:
+Example command to generate an SQL migration definition:
 
-    attributes:
-        - title: 'Example title'
+     php ezpublish/console kaliop:migration:generate MyBundle create-new-table --format=sql
 
-To define a complex attribute we need to indicate the type of the attribute and then provide the required data fields for
-the attribute.
+This will create the following file, which you are free to edit:
 
-Below is an example snippet for ezimage:
+    .../MyBundle/Migrations/2016XXYYHHMMSS_mysql_create-new-table.sql
 
-    attributes:
-        - image:
-            type: ezimage
-            path: /path/to/the/image.jpg
-            alt_text: 'Example alt text'
+*NB* if you rename the sql file, keep in mind that the type of database to which it is supposed to apply is the part
+of the filename between the first and second underscore characters.
+If you later try to execute that migration on an eZPublish installation running on, say, PostgreSQL, the migration
+will fail. You are of course free to create a specific SQL migration for a different database type.
+ 
+The Migration bundle itself imposes no limitations on the type of databases supported, but as it is based on the
+Doctrine DBAL, it will only work on the databases that Doctrine supports.
 
-Images __need__ to be placed in the `MigrationVersions/images` folder.
-Binary files __need__ to be placed in the `MigrationVersions/files` folder.
+#### PHP migrations
 
-The paths to files/images in the definition are relative paths from the MigrationVersions/images or MigrationVersions/files folders.
-For example using the path from the snippet above the system would look for the image file in
-`MigrationVersions/images/path/to/the/image.jpg` in the bundle's directory.
+If the type of manipulation that you need to do is too complex for either YML or SQL, you can use a php class as
+migration definition. To generate a PHP migration definition, execute: 
 
-Please see the `ManageContent.yml` DSL definition file for more information in the `Resources/doc/DSL` folder.
+     php ezpublish/console kaliop:migration:generate MyBundle AMigrationClass --format=php
 
-#### Using references in your migration files
+This will create the following file, which you are free to edit:
 
-The Yaml definitions support setting references of values of certain attributes, that you can retrieve in the following
-instructions.
-For example you could set a reference to a folder's location id and then use that as the parent location when creating
-articles in that folder.
+    .../MyBundle/Migrations/2016XXYYHHMMSS_AMigrationClass.php
 
-See the following example on using references. The example creates a new content type in the system and sets a reference
-to it's id.
-The second set of instructions adds a new policy to the editor role to allow editors to create objects of the new content
-type under the node with id 2.
+As you can see in the generated definition, the php class to be used for a migration needs to implement a specific
+interface. The Symfony DIC container is passed to the migration class so that it can access from it all the services,
+parameters and other thing that it needs.
 
-    -
-        mode: create
-        type: content_type
-        content_type_group: 1
-        name: Section Page
-        identifier: section_page
-        name_pattern: <title>
-        is_container: true
-        attributes:
-            -
-                type: ezstring
-                name: Title
-                identifier: title
-                required: true
-                searchable: true
-                info-collector: false
-                disable-translation: false
-                default-value: New section page
-            -
-                type: ezxmltext
-                name: Body
-                identifier: body
-                required: false
-                searchable: true
-                info-collector: false
-                disable-translation: false
-        references:
-            -
-                identifier: section_page_class
-                attribute: content_type_id
+For a more detailed example of a migration definition done in PHP, look in the MigrationVersions folder of this very bundle.
+  
+*NB* if you rename the php file, keep in mind that the filename and the name of the class it contains are tied - the
+standard autoloading mechanism of the application does not apply when loading the migration definition. This is also
+the reason why the php classes used as migrations should not use namespaces. 
 
-    -
-        mode: update
-        type: role
-        name: Editor
-        policies:
-            add:
-                -
-                    module: content
-                    function: create
-                    limitation:
-                        -
-                            type: Node
-                            value: [2]
-                        -
-                            type: Class
-                            value: [reference:section_page_class]
+### Re-executing failed migrations
+
+The easiest way to re-execute a migration in 'failed' status, is to remove it from the migrations table:
+
+    php ezpublish/console kaliop:migration:migration migration_name --delete
+
+After removing the information about the migration form the migrations table, running the `migrate` command will execute it again.
 
 
-To set the reference we used the `references` section of the content type DSL. As you can see we set a reference named
-`section_page_class` to store the content type id.
-In the update role action we retrieved the value of the reference by using the `reference:section_page_class`.
+## Usage of transactions / rolling back changes
 
-To tell the system that you want to use a previously stored reference you need to prefix the reference name with the string
-`reference:`. This tells the system to look in the stored references for attributes that support this.
+By default the bundle runs each migration in a database transaction.
+This means that if a step fails, all of the previous steps get rolled back, and the database is left at its previous state.
+This is a safety feature built in by design; if you prefer the migration steps to be executed in separate transactions
+the easiest way is to create a separate migration file for each step.
 
-Currently you can use references to store the following values:
+Note also that by default the `migrate` command stops on the 1st failed migration, but it can be executed with a flag
+to allow it to continue and execute all available migrations even in case of failures.
 
--   content
-    -   content id
-    -   location id
--   content type
-    -   content type id
-    -   content type identifier
--   location
-    -   location id
--   role
-    -   role id
-    -   role identifier
--   user group
-    -   user group id
--   user
-    -   user id
+As for rolling back changes: given the nature of the eZPublish API, rolling back changes to Content is not an easy feat.
+As such, the bundle does not provide built-in support for rolling back the database to the version it had before
+applying a given migration. We recommend always taking a database snapshot before applying migrations, and use it in
+case you need to roll back your changes. Another approach consists in writing a separate migration to undo the changes. 
 
-You can use references to set the following values:
 
--   content
-    -   content type identifier
-    -   parent location id
--   location
-    -   object id (The id of the object who's locations you want to manage)
-    -   remote id (The remote id of the object who's locations you want to manage)
-    -   parent location id (The list of parent locations where the new locations need to be created)
-    -   location id to swap the current location with (Only on update actions)
--   role
-    -   limitation values
--   user group
-    - parent user group id
--   user
-    - user group id
+## Customizing the migration logic via Event Listeners
 
-For more information please see the DSL definitions in the `Resources/doc/DSL` folder.
+An easy way to hook up custom logic to the execution of migration steps - without having to implement your own
+customized action executors - is to use Event Listeners.
 
-#### References in the XML for the eZXMLText Field
+Two events are fired *for each step* during execution of migrations:
 
-To tell the system to look for references in the xml that is used to populate ezxmltext type fields the Yaml definition
-will need to use the definition used for defining complex attributes.
-Please see the importing binary files section above on how to define complex data type handling for an attribute.
+    * ez_migration.before_execution => listeners receive a BeforeStepExecutionEvent event instance
+    * ez_migration.step_executed => listeners receive a StepExecutedEvent event instance
 
-Below is an example snippet showing how to define references for ezxmltext.
+In order to act on those events, you will need to declare tagged services, such as for ex:
 
-    attributes:
-        - description:
-            type: ezxmltext
-            content: '<section><paragraph><embed view="embed" size="medium" object_id="[reference:test_image]" /></paragraph></section>'
+    my.step_executed_listener:
+        class: my\helper\StepExecutedListener
+        tags:
+            - { name: kernel.event_listener, event: ez_migration.step_executed, method: onStepExecuted }
+
+and the corresponding php class:
+
+    use Kaliop\eZMigrationBundle\API\Event\StepExecutedEvent;
+    
+    class StepExecutedListener
+    {
+        public function onStepExecuted(StepExecutedEvent $event)
+        {
+            // do something...
+        }
+    }
+
+
+## Known Issues and limitations
+
+* if you get fatal errors when running a migration stating that a node or object has not been found, it is most likely
+    related to how the dual-kernel works in eZPublish, and the fact that the legacy and Symfony kernels use a separate
+    connection to the database. Since the migration bundle by default wraps all database changes for a migration in a
+    database transaction, when the Slots are fired which allow the legacy kernel to clear its caches, the legacy kernel
+    can not see the database changes applied by the Symfony kernel, and, depending on the specific Slot in use, might
+    fail with a fatal error.
+    The simplest workaround is to disable usage of transactions by passing the `-u` flag to the `migrate` command.
+
+* if you get fatal errors without any error message when running a migration which involves a lot of content changes,
+    such as f.e. altering a contentType with many contents, it light be that you are running out of memory for your
+    php process.
+    Known workarounds involve:
+    - increase the maximum amount of memory allowed for the php script by running it with option '-d memory_limit=-1'
+    - execute the migration command using a Symfony environment which has reduced logging and kernel debug disabled:
+        the default configuration for the `dev` environment is known to leak memory
+
+* the bundle does not at the moment support creation of user accounts using a custom contentType
+
+* the bundle at the moment does not support creating entities with a creator other than user id 14 ('admin')
+
+* if you are using eZPublish versions prior to 2015.9, you will not be able to create/update Role definitions that
+    contain policies with limitations for custom modules/functions. The known workaround is to take over the
+    RoleService and alter its constructor to inject into it the desired limitations
+
+
+## Extending the bundle
+
+### Supporting custom migrations
+
+The bundle has been designed to be easily extended in many ways, such as:
+* adding support for custom/complex field-types
+* adding support for completely new actions in the Yml definitions
+* adding support for a new file format for storing migration definitions
+* adding support for a new resolver for the custom references in the migration definitions
+* taking over the way that the migrations definitions are loaded from the filesystem or stored in the database
+* etc... 
+
+Following Symfony best practices, for the first 4 options in the list above all you need to do is to create a service
+and give it an appropriate tag (the class implementing service should of course implement an appropriate interface). 
+
+To find out the names of the tags that you need to implement, as well as for all the other services which you can
+override, take a look at the [services.yml file](Resources/config/services.yml).
+
+### Running tests
+
+The bundle uses both PHPUnit and Behat to run functional tests.
+*NB: the Behat tests are known to be broken in the current release. This will be fixed as soon as possible*
+
+To run the PHPUnit tests:
+
+    export KERNEL_DIR=ezpublish
+    export SYMFONY_ENV=behat (or whatever your test env is)
+
+    bin/phpunit vendor/kaliop/ezmigrationbundle
+
+To run the Behat tests:
+
+    bin/behat -c vendor/kaliop/ezmigrationbundle/behat.yml
+
+
+[![License](https://poser.pugx.org/kaliop/ezmigrationbundle/license)](https://packagist.org/packages/kaliop/ezmigrationbundle)
+[![Latest Stable Version](https://poser.pugx.org/kaliop/ezmigrationbundle/v/stable)](https://packagist.org/packages/kaliop/ezobjectwrapperbundle)
+[![Total Downloads](https://poser.pugx.org/kaliop/ezmigrationbundle/downloads)](https://packagist.org/packages/kaliop/ezmigrationbundle)
+
+[![Build Status](https://travis-ci.org/kaliop-uk/ezmigrationbundle.svg?branch=master)](https://travis-ci.org/kaliop-uk/ezmigrationbundle)
+[![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/kaliop-uk/ezmigrationbundle/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/kaliop-uk/ezmigrationbundle/?branch=master)
+[![Code Coverage](https://scrutinizer-ci.com/g/kaliop-uk/ezmigrationbundle/badges/coverage.png?b=master)](https://scrutinizer-ci.com/g/kaliop-uk/ezmigrationbundle/?branch=master)
+[![SensioLabsInsight](https://insight.sensiolabs.com/projects/7f16a049-a738-44ae-b947-f39401aec2d5/mini.png)](https://insight.sensiolabs.com/projects/7f16a049-a738-44ae-b947-f39401aec2d5)
