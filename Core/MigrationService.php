@@ -37,6 +37,9 @@ class MigrationService
         $this->loader = $loader;
         $this->storageHandler = $storageHandler;
         $this->repository = $repository;
+
+        // Temporary fix to failing migrations
+        $this->repository->setCurrentUser($this->repository->getUserService()->loadUserByLogin('admin'));
     }
 
     public function addDefinitionParser(DefinitionParserInterface $DefinitionParser)
