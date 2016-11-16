@@ -352,7 +352,8 @@ services:
 
     ez_migration_bundle.reference_resolver.customreference:
         class: '%ez_migration_bundle.reference_resolver.customreference.class%'
-        arguments: []
+        arguments:
+            - '@ezpublish.api.repository'
 
     ### misc
 
