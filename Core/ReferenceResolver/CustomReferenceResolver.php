@@ -2,6 +2,10 @@
 
 namespace Kaliop\eZMigrationBundle\Core\ReferenceResolver;
 
+use eZ\Publish\API\Repository\Values\Content\Query\Criterion\Field;
+use eZ\Publish\API\Repository\Values\Content\Query\Criterion\Operator;
+use \eZ\Publish\API\Repository\Repository;
+
 /**
  * Handle 'any' references by letting the developer store them and retrieve them afterwards
  */
@@ -10,7 +14,7 @@ class CustomReferenceResolver extends AbstractResolver
     /**
      * Defines the prefix for all reference identifier strings in definitions
      */
-    protected $referencePrefixes = array('reference:');
+    protected $referencePrefixes = array('reference:', 'main_location_content_field:');
 
     /**
      * Array of all references set by the currently running migrations.
@@ -18,6 +22,21 @@ class CustomReferenceResolver extends AbstractResolver
      * @var array
      */
     private $references = array();
+
+    /**
+     * @var Repository
+     */
+    protected $repository;
+
+    /**
+     * @param Repository $repository
+     */
+    public function __construct(Repository $repository)
+    {
+        parent::__construct();
+
+        $this->repository = $repository;
+    }
 
     /**
      * Get a stored reference
@@ -28,12 +47,20 @@ class CustomReferenceResolver extends AbstractResolver
      */
     public function getReferenceValue($identifier)
     {
-        $identifier = $this->getReferenceIdentifier($identifier);
-        if (!array_key_exists($identifier, $this->references)) {
-            throw new \Exception("No reference set with identifier '$identifier'");
+        $ref = $this->getReferenceIdentifierByPrefix($identifier);
+
+        switch($ref['prefix']) {
+            case 'reference:':
+                if (!array_key_exists($ref['identifier'], $this->references)) {
+                    throw new \Exception("No reference set with identifier '{$ref['identifier']}'");
+                }
+
+                return $this->references[$ref['identifier']];
+            case 'main_location_content_field:':
+                return $this->getContentMainLocationByField($ref['identifier']);
         }
 
-        return $this->references[$identifier];
+
     }
 
     /**
@@ -50,5 +77,19 @@ class CustomReferenceResolver extends AbstractResolver
         }
 
         $this->references[$identifier] = $value;
+    }
+
+    /**
+     * @param string $criteria main_location_content_field::<field>:<value>
+     * @return string Location id
+
+     */
+    private function getContentMainLocationByField($criteria)
+    {
+        list($field, $value) = explode(':', $criteria);
+
+        $content = $this->repository->getSearchService()->findSingle(new Field($field, Operator::EQ, $value));
+
+        return $content->contentInfo->mainLocationId;
     }
 }
