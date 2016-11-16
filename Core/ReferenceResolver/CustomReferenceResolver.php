@@ -41,7 +41,7 @@ class CustomReferenceResolver extends AbstractResolver
     /**
      * Get a stored reference
      *
-     * @param string $identifier format: reference:<some_custom_identifier>
+     * @param string $identifier format: reference:<some_custom_identifier> or main_location_content_field:<field>:<value>
      * @return mixed
      * @throws \Exception When trying to retrieve an unset reference
      */
@@ -80,7 +80,7 @@ class CustomReferenceResolver extends AbstractResolver
     }
 
     /**
-     * @param string $criteria main_location_content_field::<field>:<value>
+     * @param string $criteria <field>:<value> where <field> is a content type field
      * @return string Location id
 
      */
