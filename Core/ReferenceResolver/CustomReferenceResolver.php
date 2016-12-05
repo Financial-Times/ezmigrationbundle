@@ -4,6 +4,8 @@ namespace Kaliop\eZMigrationBundle\Core\ReferenceResolver;
 
 use eZ\Publish\API\Repository\Values\Content\Query\Criterion\Field;
 use eZ\Publish\API\Repository\Values\Content\Query\Criterion\Operator;
+use eZ\Publish\API\Repository\Values\Content\Query\Criterion\ContentTypeIdentifier;
+use eZ\Publish\API\Repository\Values\Content\Query\Criterion\LogicalAnd;
 use \eZ\Publish\API\Repository\Repository;
 
 /**
@@ -14,7 +16,7 @@ class CustomReferenceResolver extends AbstractResolver
     /**
      * Defines the prefix for all reference identifier strings in definitions
      */
-    protected $referencePrefixes = array('reference:', 'main_location_content_field:');
+    protected $referencePrefixes = array('reference:', 'main_location_content_field:', 'user_group:');
 
     /**
      * Array of all references set by the currently running migrations.
@@ -58,9 +60,9 @@ class CustomReferenceResolver extends AbstractResolver
                 return $this->references[$ref['identifier']];
             case 'main_location_content_field:':
                 return $this->getContentMainLocationByField($ref['identifier']);
+            case 'user_group:':
+                return $this->getUserGroupIdByName($ref['identifier']);
         }
-
-
     }
 
     /**
@@ -91,5 +93,24 @@ class CustomReferenceResolver extends AbstractResolver
         $content = $this->repository->getSearchService()->findSingle(new Field($field, Operator::EQ, $value));
 
         return $content->contentInfo->mainLocationId;
+    }
+
+    /**
+     * @param $groupName
+     *
+     * @return int
+     */
+    private function getUserGroupIdByName($groupName)
+    {
+        $content = $this->repository->getSearchService()->findSingle(
+            new LogicalAnd([
+                new ContentTypeIdentifier('user_group'),
+                new Field('name', Operator::EQ, $groupName),
+            ])
+        );
+
+        $userGroup = $this->repository->getUserService()->loadUserGroup($content->id);
+
+        return $userGroup->id;
     }
 }

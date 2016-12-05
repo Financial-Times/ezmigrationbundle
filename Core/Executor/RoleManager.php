@@ -212,6 +212,10 @@ class RoleManager extends RepositoryExecutor
                     break;
                 case 'group':
                     foreach ($assign['ids'] as $groupId) {
+                        if ($this->referenceResolver->isReference($groupId)) {
+                            $groupId = $this->referenceResolver->getReferenceValue($groupId);
+                        }
+
                         $group = $userService->loadUserGroup($groupId);
 
                         if (!array_key_exists('limitations', $assign)) {
