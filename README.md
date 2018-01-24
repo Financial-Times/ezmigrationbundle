@@ -1,6 +1,8 @@
 Kaliop eZ-Migration Bundle
 ==========================
 
+**WARNING**: This fork is based on an old version, if you are starting a new project or have issues with this bundle switch to the upstream version.
+
 This bundle makes it easy to programmatically deploy changes to eZPlatform / eZPublish 5 database structure and contents.
 
 It is inspired by the [DoctrineMigrationsBundle](http://symfony.com/doc/current/bundles/DoctrineMigrationsBundle/index.html)
