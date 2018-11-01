@@ -96,7 +96,8 @@ class SQLDefinitionHandler implements VersionInterface, ContainerAwareInterface,
             throw new \InvalidArgumentException('Missing sql file from migration.');
         }
 
-        $parts = explode( '_', $this->sqlFile);
+        $fileName = basename($this->sqlFile);
+        $parts = explode( '_', $fileName);
 
         if ( count($parts) < 2 || !in_array( $parts[1], $this->supportedDatabases)) {
             return false;
