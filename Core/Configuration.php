@@ -160,7 +160,10 @@ class Configuration
             case "php":
                 //Need to require the file as autoload will not be able to find it.
                 require_once $filePath;
-                $class = "\\{$this->versionDirectory}\\{$bundle}\\" . $info['filename'];
+
+                //Resolve class name to proper value
+                $className = preg_replace('/^\d{14}_/', '', $info['filename']);
+                $class = "\\{$this->versionDirectory}\\{$bundle}\\{$className}";
                 $versionObject->migration = new $class();
                 $versionObject->type = 'PHP';
 
